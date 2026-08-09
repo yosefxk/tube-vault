@@ -38,27 +38,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Clipboard Auto-Paste
+    // Clipboard Auto-Paste (No Popup Forms!)
     pasteBtn.addEventListener('click', async () => {
         urlInput.focus();
-        
-        // 1. Modern Async Clipboard API
+        urlInput.select();
+
+        // Try modern Async Clipboard API if available
         if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
             try {
                 const text = await navigator.clipboard.readText();
                 if (text && text.trim().length > 0) {
                     urlInput.value = text.trim();
-                    return;
                 }
             } catch (err) {
-                console.warn('Async clipboard access blocked:', err);
+                console.log('Clipboard API read blocked by browser security:', err);
             }
-        }
-
-        // 2. Fallback prompt if HTTP / Tailscale blocks clipboard.readText
-        const text = prompt('Paste YouTube URL:');
-        if (text && text.trim().length > 0) {
-            urlInput.value = text.trim();
         }
     });
 
