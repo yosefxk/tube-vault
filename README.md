@@ -37,7 +37,7 @@ version: '3.8'
 
 services:
   tube-vault:
-    image: ghcr.io/yourusername/tube-vault:latest  # or build locally from git
+    image: ghcr.io/yosefxk/tube-vault:latest  # or build locally from git
     container_name: tube-vault
     restart: unless-stopped
     ports:
@@ -72,7 +72,7 @@ If running directly on your Linux/Mac/Windows host:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/tube-vault.git
+git clone https://github.com/yosefxk/tube-vault.git
 cd tube-vault
 
 # Start container
