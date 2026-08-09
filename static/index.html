@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TubeVault - Fast Self-Hosted Downloader</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,21 +20,24 @@
                 </div>
             </div>
             <div class="badge-server">
-                <span class="dot-online"></span> Server Ready
+                <span class="dot-online"></span> Ready
             </div>
         </header>
 
         <!-- Main Downloader Card -->
         <main class="card">
-            <div class="input-label">
-                <span>PASTE YOUTUBE LINK</span>
-            </div>
+            <div class="input-label">PASTE YOUTUBE LINK</div>
             
             <div class="input-wrapper">
-                <input type="url" id="urlInput" class="url-input" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off">
-                <button type="button" id="pasteBtn" class="btn-paste">
-                    📋 Paste
-                </button>
+                <input type="url" id="urlInput" class="url-input" placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..." autocomplete="off">
+                <div class="input-actions-row">
+                    <button type="button" id="pasteBtn" class="btn-paste">
+                        📋 Paste Link
+                    </button>
+                    <button type="button" id="clearBtn" class="btn-clear">
+                        ✕ Clear
+                    </button>
+                </div>
             </div>
 
             <!-- 1-Tap Quick Action Buttons -->
@@ -48,7 +51,7 @@
             </div>
 
             <button type="button" id="inspectBtn" class="btn-inspect">
-                ⚙️ Advanced Formats (4K, 720p, FLAC)
+                ⚙️ Format Inspector (4K, 720p, FLAC)
             </button>
 
             <!-- Video Metadata & Format Inspector Card -->
@@ -84,14 +87,13 @@
 
         <!-- Download History Section -->
         <section class="card">
-            <div class="section-title">
-                <span>📜 Download History</span>
-                <input type="text" id="searchInput" class="search-input" placeholder="Search history...">
+            <div class="section-title-row">
+                <h2 class="section-title">📜 History</h2>
+                <input type="text" id="searchInput" class="search-input" placeholder="Search...">
             </div>
 
             <div id="historyList" class="history-list">
-                <!-- Dynamic history items -->
-                <div class="history-empty" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                <div class="history-empty" style="text-align: center; color: var(--text-muted); padding: 16px;">
                     Loading history...
                 </div>
             </div>
@@ -102,7 +104,7 @@
     <div id="playerModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="modalTitle" style="font-size: 1rem; color: white;">Media Player</h3>
+                <h3 id="modalTitle" style="font-size: 0.95rem; color: white;">Media Player</h3>
                 <button type="button" id="modalClose" class="modal-close">&times;</button>
             </div>
             <div class="modal-body">

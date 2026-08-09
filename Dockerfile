@@ -1,8 +1,9 @@
 FROM python:3.12-slim
 
-# Install ffmpeg and curl
+# Install ffmpeg, nodejs (JS runtime for yt-dlp signature extraction) and curl
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
+    nodejs \
     curl \
     && rm -rf /var/lib/apt/lists/*
 

@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const urlInput = document.getElementById('urlInput');
     const pasteBtn = document.getElementById('pasteBtn');
+    const clearBtn = document.getElementById('clearBtn');
     const inspectBtn = document.getElementById('inspectBtn');
     const previewCard = document.getElementById('previewCard');
     const previewThumb = document.getElementById('previewThumb');
@@ -28,30 +29,36 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeEventSource = null;
     let fetchedVideoInfo = null;
 
-    // Clipboard Auto-Paste with fallback for HTTP / Tailscale contexts
+    // Clear button
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            urlInput.value = '';
+            urlInput.focus();
+            previewCard.style.display = 'none';
+        });
+    }
+
+    // Clipboard Auto-Paste
     pasteBtn.addEventListener('click', async () => {
-        // 1. Try modern Clipboard API
+        urlInput.focus();
+        
+        // 1. Modern Async Clipboard API
         if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
             try {
                 const text = await navigator.clipboard.readText();
-                if (text) {
+                if (text && text.trim().length > 0) {
                     urlInput.value = text.trim();
-                    urlInput.focus();
                     return;
                 }
             } catch (err) {
-                console.warn('Clipboard API restricted or denied:', err);
+                console.warn('Async clipboard access blocked:', err);
             }
         }
 
-        // 2. Fallback for HTTP / Tailscale IP (browsers restrict clipboard.readText on non-HTTPS)
-        urlInput.focus();
-        urlInput.select();
-
-        // 3. Simple fallback prompt for 1-tap paste if API is blocked by browser
-        const pasted = prompt('Paste YouTube link:');
-        if (pasted) {
-            urlInput.value = pasted.trim();
+        // 2. Fallback prompt if HTTP / Tailscale blocks clipboard.readText
+        const text = prompt('Paste YouTube URL:');
+        if (text && text.trim().length > 0) {
+            urlInput.value = text.trim();
         }
     });
 
@@ -78,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        inspectBtn.innerText = '⏳ Fetching Formats...';
+        inspectBtn.innerText = '⏳ Inspecting Formats...';
         inspectBtn.disabled = true;
 
         try {
@@ -119,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {
             alert(`Error: ${err.message}`);
         } finally {
-            inspectBtn.innerText = '⚙️ Advanced Formats (4K, 720p, FLAC)';
+            inspectBtn.innerText = '⚙️ Format Inspector (4K, 720p, FLAC)';
             inspectBtn.disabled = false;
         }
     });
@@ -131,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         progressCard.style.display = 'block';
-        progressStatus.innerText = 'Starting download on server...';
+        progressStatus.innerText = 'Starting download...';
         progressPercent.innerText = '0%';
         progressBarFill.style.width = '0%';
         progressSpeed.innerText = '0 MB/s';
@@ -185,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 progressBarFill.style.width = '99%';
                 progressEta.innerText = 'Finalizing file...';
             } else if (data.status === 'completed') {
-                progressStatus.innerText = '✅ Complete! Saving to phone...';
+                progressStatus.innerText = '✅ Complete! Downloading to phone...';
                 progressPercent.innerText = '100%';
                 progressBarFill.style.width = '100%';
                 progressEta.innerText = 'Saved!';
@@ -214,8 +221,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Trigger Device File Download
     function triggerDeviceDownload(filename) {
         const downloadUrl = `/api/files/${encodeURIComponent(filename)}/download`;
-        
-        // Create invisible anchor link to trigger browser native download prompt on iOS/Android/PC
         const a = document.createElement('a');
         a.href = downloadUrl;
         a.download = filename;
@@ -244,8 +249,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!records || records.length === 0) {
             historyList.innerHTML = `
-                <div style="text-align: center; color: var(--text-muted); padding: 20px;">
-                    No download history yet. Paste a link above to get started!
+                <div style="text-align: center; color: var(--text-muted); padding: 16px;">
+                    No history yet. Paste a YouTube link above!
                 </div>
             `;
             return;
@@ -264,19 +269,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="history-title" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</div>
                     <div class="history-sub">
                         <span class="tag-format">${escapeHtml(item.format_note || 'Media')}</span>
-                        <span>${escapeHtml(item.uploader)}</span>
                         ${sizeStr ? `• <span>${sizeStr}</span>` : ''}
                         ${dateStr ? `• <span>${dateStr}</span>` : ''}
                     </div>
                 </div>
                 <div class="history-actions">
-                    <button type="button" class="btn-action download-btn" title="Download to Device" data-file="${escapeHtml(item.filename)}">
+                    <button type="button" class="btn-action download-btn" title="Save to Device" data-file="${escapeHtml(item.filename)}">
                         📥
                     </button>
                     <button type="button" class="btn-action play-btn" title="Play Preview" data-file="${escapeHtml(item.filename)}" data-title="${escapeHtml(item.title)}" data-audio="${item.is_audio}">
                         ▶️
                     </button>
-                    <button type="button" class="btn-action delete-btn" title="Delete Entry" data-id="${item.id}">
+                    <button type="button" class="btn-action delete-btn" title="Delete" data-id="${item.id}">
                         🗑️
                     </button>
                 </div>
@@ -294,7 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Delete Button Handler
             el.querySelector('.delete-btn').addEventListener('click', async () => {
-                if (confirm(`Delete "${item.title}" from history?`)) {
+                if (confirm(`Delete "${item.title}"?`)) {
                     await fetch(`/api/history/${item.id}`, { method: 'DELETE' });
                     loadHistory(searchInput.value.trim());
                 }
