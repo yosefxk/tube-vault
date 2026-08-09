@@ -173,7 +173,7 @@ async def run_download_task(task_id: str, url: str, preset: str = "quick_1080p",
             })
         elif preset == 'quick_1080p':
             format_note = "1080p Video"
-            ydl_opts['format'] = 'bestvideo[height<=1080]+bestaudio/best[height<=1080]/best'
+            ydl_opts['format'] = 'bestvideo[height<=1080]+bestaudio/best[height<=1080]/bestvideo+bestaudio/best'
             ydl_opts['merge_output_format'] = 'mp4'
         elif preset == 'best_video':
             format_note = "Max Quality Video"
@@ -181,7 +181,7 @@ async def run_download_task(task_id: str, url: str, preset: str = "quick_1080p",
             ydl_opts['merge_output_format'] = 'mp4'
         elif custom_format_id:
             format_note = f"Custom Format ({custom_format_id})"
-            ydl_opts['format'] = f"{custom_format_id}+bestaudio/best"
+            ydl_opts['format'] = f"{custom_format_id}+bestaudio/best/{custom_format_id}/best"
             ydl_opts['merge_output_format'] = 'mp4'
         else:
             format_note = "Best Video"
