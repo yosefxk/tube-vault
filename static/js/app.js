@@ -28,18 +28,30 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeEventSource = null;
     let fetchedVideoInfo = null;
 
-    // Clipboard Auto-Paste
+    // Clipboard Auto-Paste with fallback for HTTP / Tailscale contexts
     pasteBtn.addEventListener('click', async () => {
-        try {
-            const text = await navigator.clipboard.readText();
-            if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
-                urlInput.value = text.trim();
-                urlInput.focus();
-            } else if (text) {
-                urlInput.value = text.trim();
+        // 1. Try modern Clipboard API
+        if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
+            try {
+                const text = await navigator.clipboard.readText();
+                if (text) {
+                    urlInput.value = text.trim();
+                    urlInput.focus();
+                    return;
+                }
+            } catch (err) {
+                console.warn('Clipboard API restricted or denied:', err);
             }
-        } catch (err) {
-            urlInput.focus();
+        }
+
+        // 2. Fallback for HTTP / Tailscale IP (browsers restrict clipboard.readText on non-HTTPS)
+        urlInput.focus();
+        urlInput.select();
+
+        // 3. Simple fallback prompt for 1-tap paste if API is blocked by browser
+        const pasted = prompt('Paste YouTube link:');
+        if (pasted) {
+            urlInput.value = pasted.trim();
         }
     });
 
