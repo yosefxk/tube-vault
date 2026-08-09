@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const urlInput = document.getElementById('urlInput');
-    const pasteBtn = document.getElementById('pasteBtn');
     const clearBtn = document.getElementById('clearBtn');
+    const pasteBtn = document.getElementById('pasteBtn');
     const inspectBtn = document.getElementById('inspectBtn');
     const previewCard = document.getElementById('previewCard');
     const previewThumb = document.getElementById('previewThumb');
@@ -17,6 +17,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const progressDownloaded = document.getElementById('progressDownloaded');
     const progressEta = document.getElementById('progressEta');
 
+    const step1 = document.getElementById('step1');
+    const step2 = document.getElementById('step2');
+    const step3 = document.getElementById('step3');
+    const step4 = document.getElementById('step4');
+    const line1 = document.getElementById('line1');
+    const line2 = document.getElementById('line2');
+    const line3 = document.getElementById('line3');
+
     const historyList = document.getElementById('historyList');
     const searchInput = document.getElementById('searchInput');
 
@@ -29,31 +37,43 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeEventSource = null;
     let fetchedVideoInfo = null;
 
-    // Clear button
-    if (clearBtn) {
-        clearBtn.addEventListener('click', () => {
-            urlInput.value = '';
-            urlInput.focus();
-            previewCard.style.display = 'none';
-        });
+    // Toggle Inline Clear Button
+    function toggleClearBtn() {
+        if (urlInput.value.trim().length > 0) {
+            clearBtn.style.display = 'flex';
+        } else {
+            clearBtn.style.display = 'none';
+        }
     }
 
-    // Clipboard Auto-Paste (No Popup Forms!)
+    urlInput.addEventListener('input', toggleClearBtn);
+
+    clearBtn.addEventListener('click', () => {
+        urlInput.value = '';
+        toggleClearBtn();
+        urlInput.focus();
+        previewCard.style.display = 'none';
+    });
+
+    // Clipboard Auto-Paste
     pasteBtn.addEventListener('click', async () => {
         urlInput.focus();
-        urlInput.select();
-
-        // Try modern Async Clipboard API if available
+        
         if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
             try {
                 const text = await navigator.clipboard.readText();
                 if (text && text.trim().length > 0) {
                     urlInput.value = text.trim();
+                    toggleClearBtn();
+                    return;
                 }
             } catch (err) {
-                console.log('Clipboard API read blocked by browser security:', err);
+                console.log('Clipboard read blocked over HTTP:', err);
             }
         }
+
+        // If Clipboard API is blocked by browser over HTTP
+        urlInput.select();
     });
 
     // Preset Buttons (1-Tap Download)
@@ -125,6 +145,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Stepper UI Manager
+    function updateStepper(currentStep) {
+        // Reset all steps
+        [step1, step2, step3, step4].forEach(s => s.classList.remove('active', 'completed'));
+        [line1, line2, line3].forEach(l => l.classList.remove('completed'));
+
+        if (currentStep >= 1) {
+            step1.classList.add(currentStep > 1 ? 'completed' : 'active');
+        }
+        if (currentStep >= 2) {
+            line1.classList.add('completed');
+            step2.classList.add(currentStep > 2 ? 'completed' : 'active');
+        }
+        if (currentStep >= 3) {
+            line2.classList.add('completed');
+            step3.classList.add(currentStep > 3 ? 'completed' : 'active');
+        }
+        if (currentStep >= 4) {
+            line3.classList.add('completed');
+            step4.classList.add('completed');
+        }
+    }
+
     // Start Download Function
     async function startDownload(url, preset, customFormatId = null) {
         if (activeEventSource) {
@@ -132,9 +175,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         progressCard.style.display = 'block';
-        progressStatus.innerText = 'Starting download...';
-        progressPercent.innerText = '0%';
-        progressBarFill.style.width = '0%';
+        updateStepper(1); // Step 1: Fetching metadata
+        progressStatus.innerText = 'Step 1: Fetching video metadata...';
+        progressPercent.innerText = '5%';
+        progressBarFill.style.width = '5%';
         progressSpeed.innerText = '0 MB/s';
         progressDownloaded.innerText = '0 MB / 0 MB';
         progressEta.innerText = 'Calculating...';
@@ -173,20 +217,28 @@ document.addEventListener('DOMContentLoaded', () => {
         activeEventSource.onmessage = (event) => {
             const data = JSON.parse(event.data);
             
-            if (data.status === 'downloading') {
-                progressStatus.innerText = 'Downloading on server...';
+            if (data.status === 'starting') {
+                updateStepper(1);
+                progressStatus.innerText = 'Step 1: Preparing download queue...';
+                progressPercent.innerText = '10%';
+                progressBarFill.style.width = '10%';
+            } else if (data.status === 'downloading') {
+                updateStepper(2); // Step 2: Downloading
+                progressStatus.innerText = 'Step 2: Downloading media fragments...';
                 progressPercent.innerText = `${data.percent}%`;
                 progressBarFill.style.width = `${data.percent}%`;
                 progressSpeed.innerText = data.speed_str || '0 MB/s';
                 progressDownloaded.innerText = `${data.downloaded_str} / ${data.total_str}`;
                 progressEta.innerText = `ETA: ${data.eta_str}`;
             } else if (data.status === 'converting') {
-                progressStatus.innerText = 'Converting & finalizing...';
-                progressPercent.innerText = '99%';
-                progressBarFill.style.width = '99%';
-                progressEta.innerText = 'Finalizing file...';
+                updateStepper(3); // Step 3: Converting / Merging
+                progressStatus.innerText = 'Step 3: Merging & converting audio/video...';
+                progressPercent.innerText = '95%';
+                progressBarFill.style.width = '95%';
+                progressEta.innerText = 'FFmpeg processing...';
             } else if (data.status === 'completed') {
-                progressStatus.innerText = '✅ Complete! Downloading to phone...';
+                updateStepper(4); // Step 4: Complete & Save
+                progressStatus.innerText = 'Step 4: Complete! Downloading to your device...';
                 progressPercent.innerText = '100%';
                 progressBarFill.style.width = '100%';
                 progressEta.innerText = 'Saved!';
@@ -201,7 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Refresh history
                 loadHistory();
             } else if (data.status === 'failed') {
-                progressStatus.innerText = `❌ Download Failed: ${data.error}`;
+                progressStatus.innerText = `❌ Failed: ${data.error}`;
                 progressStatus.style.color = 'var(--accent-danger)';
                 activeEventSource.close();
             }
@@ -358,4 +410,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initial load
     loadHistory();
+    toggleClearBtn();
 });

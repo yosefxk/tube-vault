@@ -28,16 +28,14 @@
         <main class="card">
             <div class="input-label">PASTE YOUTUBE LINK</div>
             
-            <div class="input-wrapper">
-                <input type="url" id="urlInput" class="url-input" placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..." autocomplete="off">
-                <div class="input-actions-row">
-                    <button type="button" id="pasteBtn" class="btn-paste">
-                        📋 Paste Link
-                    </button>
-                    <button type="button" id="clearBtn" class="btn-clear">
-                        ✕ Clear
-                    </button>
+            <div class="input-container">
+                <div class="input-relative">
+                    <input type="url" id="urlInput" class="url-input" placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..." autocomplete="off">
+                    <button type="button" id="clearBtn" class="input-clear-btn" title="Clear input" style="display: none;">✕</button>
                 </div>
+                <button type="button" id="pasteBtn" class="btn-paste">
+                    📋 Paste Link
+                </button>
             </div>
 
             <!-- 1-Tap Quick Action Buttons -->
@@ -68,10 +66,33 @@
                 </div>
             </div>
 
-            <!-- Download Progress Card -->
+            <!-- Download Progress & Multi-Step Stepper Card -->
             <div id="progressCard" class="progress-card">
+                <!-- Visual Stepper Progress Bar -->
+                <div class="stepper-wrapper">
+                    <div class="step-item active" id="step1">
+                        <div class="step-circle">1</div>
+                        <div class="step-label">Fetch Info</div>
+                    </div>
+                    <div class="step-line" id="line1"></div>
+                    <div class="step-item" id="step2">
+                        <div class="step-circle">2</div>
+                        <div class="step-label">Download</div>
+                    </div>
+                    <div class="step-line" id="line2"></div>
+                    <div class="step-item" id="step3">
+                        <div class="step-circle">3</div>
+                        <div class="step-label">Convert</div>
+                    </div>
+                    <div class="step-line" id="line3"></div>
+                    <div class="step-item" id="step4">
+                        <div class="step-circle">4</div>
+                        <div class="step-label">Save File</div>
+                    </div>
+                </div>
+
                 <div class="progress-header">
-                    <span id="progressStatus">Downloading...</span>
+                    <span id="progressStatus">Initializing task...</span>
                     <span id="progressPercent">0%</span>
                 </div>
                 <div class="progress-bar-bg">
