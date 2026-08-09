@@ -44,6 +44,12 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+      - name: Connect to Tailscale
+        if: ${{ secrets.TAILSCALE_AUTHKEY != '' }}
+        uses: tailscale/tailscale-action@v2
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+
       - name: Trigger Portainer Webhook Redeploy
         if: ${{ secrets.PORTAINER_WEBHOOK_URL != '' || secrets.PORTAINER_WEBHOOK != '' }}
         run: |
