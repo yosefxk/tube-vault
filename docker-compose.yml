@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   tube-vault:
-    build: .
+    image: ghcr.io/yosefxk/tube-vault:latest
     container_name: tube-vault
     restart: unless-stopped
     ports:
