@@ -1,0 +1,12 @@
+.git
+.gitignore
+.dockerignore
+__pycache__
+*.pyc
+*.pyo
+downloads/*
+!downloads/.gitkeep
+data/*
+!data/.gitkeep
+README.md
+LICENSE

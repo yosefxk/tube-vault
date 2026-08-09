@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  tube-vault:
+    build: .
+    container_name: tube-vault
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./downloads:/app/downloads
+      - ./data:/app/data
+    environment:
+      - PORT=5000

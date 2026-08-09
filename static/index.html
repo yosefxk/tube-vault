@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TubeVault - Fast Self-Hosted Downloader</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo-group">
+                <div class="logo-icon">⚡</div>
+                <div>
+                    <h1 class="logo-title">TubeVault</h1>
+                </div>
+            </div>
+            <div class="badge-server">
+                <span class="dot-online"></span> Server Ready
+            </div>
+        </header>
+
+        <!-- Main Downloader Card -->
+        <main class="card">
+            <div class="input-label">
+                <span>PASTE YOUTUBE LINK</span>
+            </div>
+            
+            <div class="input-wrapper">
+                <input type="url" id="urlInput" class="url-input" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off">
+                <button type="button" id="pasteBtn" class="btn-paste">
+                    📋 Paste
+                </button>
+            </div>
+
+            <!-- 1-Tap Quick Action Buttons -->
+            <div class="presets-grid">
+                <button type="button" class="btn-preset primary-mp3" data-preset="quick_mp3">
+                    🎵 ⚡ Quick MP3 (320k)
+                </button>
+                <button type="button" class="btn-preset primary-mp4" data-preset="quick_1080p">
+                    🎬 ⚡ Quick 1080p Video
+                </button>
+            </div>
+
+            <button type="button" id="inspectBtn" class="btn-inspect">
+                ⚙️ Advanced Formats (4K, 720p, FLAC)
+            </button>
+
+            <!-- Video Metadata & Format Inspector Card -->
+            <div id="previewCard" class="preview-card">
+                <div class="preview-content">
+                    <img id="previewThumb" class="preview-thumb" src="" alt="Thumbnail">
+                    <div class="preview-info">
+                        <div id="previewTitle" class="preview-title">Video Title</div>
+                        <div id="previewMeta" class="preview-meta">Channel • 00:00</div>
+                    </div>
+                </div>
+                <div id="formatOptions" class="format-options-grid">
+                    <!-- Dynamic format chips -->
+                </div>
+            </div>
+
+            <!-- Download Progress Card -->
+            <div id="progressCard" class="progress-card">
+                <div class="progress-header">
+                    <span id="progressStatus">Downloading...</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div id="progressBarFill" class="progress-bar-fill"></div>
+                </div>
+                <div class="progress-stats">
+                    <span id="progressSpeed">0 MB/s</span>
+                    <span id="progressDownloaded">0 MB / 0 MB</span>
+                    <span id="progressEta">Calculating...</span>
+                </div>
+            </div>
+        </main>
+
+        <!-- Download History Section -->
+        <section class="card">
+            <div class="section-title">
+                <span>📜 Download History</span>
+                <input type="text" id="searchInput" class="search-input" placeholder="Search history...">
+            </div>
+
+            <div id="historyList" class="history-list">
+                <!-- Dynamic history items -->
+                <div class="history-empty" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                    Loading history...
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Media Player Modal -->
+    <div id="playerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle" style="font-size: 1rem; color: white;">Media Player</h3>
+                <button type="button" id="modalClose" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <video id="modalVideo" class="modal-player" controls style="display: none;"></video>
+                <audio id="modalAudio" class="modal-player" controls style="display: none;"></audio>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
