@@ -20,7 +20,7 @@
 - 🚀 **Multi-Threaded Downloader**: Powered by `yt-dlp` with fragment downloading (`-N 8`) and `FFmpeg` for maximum server speed.
 - 📥 **Zero-Click Device Download**: Once conversion completes on your server, the file automatically triggers a direct browser save onto your phone/laptop.
 - 📜 **Persistent History Database**: Remembers every video you've downloaded with title, thumbnail, channel, date, format, and file size. Re-download past files to any device anytime.
-- 🔒 **Tailscale & Homelab Private**: Exposes a single internal port (`5000`) perfect for private access via Tailscale (`http://100.x.x.x:5000`) without public exposure.
+- 🔒 **Tailscale & Homelab Private**: Exposes a single internal port (`5000`) perfect for private access via Tailscale (`http://<your-tailscale-ip>:5000`) without public exposure.
 
 ---
 
@@ -59,9 +59,9 @@ services:
 Since TubeVault is designed for personal server hosting:
 - You can access it securely from anywhere on your phone or laptop using your server's **Tailscale IP**:
   ```text
-  http://100.100.1.2:5000
+  http://<your-tailscale-ip>:5000
   ```
-  *(or your Tailscale MagicDNS name: `http://server-name.your-tailnet.ts.net:5000`)*
+  *(or your Tailscale MagicDNS name: `http://<your-server-name>.<your-tailnet>.ts.net:5000`)*
 - No need to expose ports to the public internet!
 
 ---
