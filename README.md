@@ -1,6 +1,7 @@
 # ⚡ TubeVault
 
 <p align="center">
+  <a href="https://github.com/yosefxk/tube-vault/actions"><img src="https://github.com/yosefxk/tube-vault/workflows/Build%20and%20Publish%20Docker%20Image%20to%20GHCR/badge.svg" alt="Build Status"></a>
   <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT">
   <img src="https://img.shields.io/badge/Python-3.12-3776AB.svg?logo=python&logoColor=white" alt="Python 3.12">
   <img src="https://img.shields.io/badge/FastAPI-0.110-009688.svg?logo=fastapi&logoColor=white" alt="FastAPI">
