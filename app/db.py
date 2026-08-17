@@ -1,6 +1,8 @@
+import os
 import json
 import uuid
 import threading
+import shutil
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from app.config import HISTORY_FILE
@@ -12,18 +14,50 @@ class HistoryDB:
 
     def _ensure_file(self):
         if not HISTORY_FILE.exists():
+            backup_file = HISTORY_FILE.with_suffix('.bak')
+            if backup_file.exists():
+                try:
+                    shutil.copy2(backup_file, HISTORY_FILE)
+                    return
+                except Exception:
+                    pass
             with open(HISTORY_FILE, "w", encoding="utf-8") as f:
                 json.dump([], f)
 
+    def _read_records(self) -> List[Dict[str, Any]]:
+        try:
+            if HISTORY_FILE.exists():
+                with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+                    content = f.read().strip()
+                    if content:
+                        return json.loads(content)
+        except Exception:
+            # Fallback to backup if primary read fails
+            backup_file = HISTORY_FILE.with_suffix('.bak')
+            if backup_file.exists():
+                try:
+                    with open(backup_file, "r", encoding="utf-8") as f:
+                        return json.load(f)
+                except Exception:
+                    pass
+        return []
+
+    def _write_records(self, records: List[Dict[str, Any]]):
+        temp_file = HISTORY_FILE.with_suffix('.tmp')
+        with open(temp_file, "w", encoding="utf-8") as f:
+            json.dump(records, f, indent=2)
+        os.replace(temp_file, HISTORY_FILE)
+
+        # Update backup
+        backup_file = HISTORY_FILE.with_suffix('.bak')
+        try:
+            shutil.copy2(HISTORY_FILE, backup_file)
+        except Exception:
+            pass
+
     def get_all(self, query: Optional[str] = None) -> List[Dict[str, Any]]:
         with self.lock:
-            try:
-                with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-                    records = json.load(f)
-            except Exception:
-                records = []
-            
-            # Sort newest first
+            records = self._read_records()
             records.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
 
             if query:
@@ -39,11 +73,7 @@ class HistoryDB:
 
     def add_entry(self, entry: Dict[str, Any]) -> Dict[str, Any]:
         with self.lock:
-            try:
-                with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-                    records = json.load(f)
-            except Exception:
-                records = []
+            records = self._read_records()
 
             entry_id = str(uuid.uuid4())
             new_record = {
@@ -64,10 +94,7 @@ class HistoryDB:
             }
 
             records.append(new_record)
-
-            with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-                json.dump(records, f, indent=2)
-
+            self._write_records(records)
             return new_record
 
     def get_by_id(self, record_id: str) -> Optional[Dict[str, Any]]:
@@ -79,19 +106,12 @@ class HistoryDB:
 
     def delete_entry(self, record_id: str) -> bool:
         with self.lock:
-            try:
-                with open(HISTORY_FILE, "r", encoding="utf-8") as f:
-                    records = json.load(f)
-            except Exception:
-                return False
-
+            records = self._read_records()
             new_records = [r for r in records if r["id"] != record_id]
             if len(new_records) == len(records):
                 return False
 
-            with open(HISTORY_FILE, "w", encoding="utf-8") as f:
-                json.dump(new_records, f, indent=2)
-
+            self._write_records(new_records)
             return True
 
 db = HistoryDB()

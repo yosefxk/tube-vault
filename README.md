@@ -38,17 +38,23 @@ version: '3.8'
 
 services:
   tube-vault:
-    image: ghcr.io/yosefxk/tube-vault:latest  # or build locally from git
+    image: ghcr.io/yosefxk/tube-vault:latest
     container_name: tube-vault
     restart: unless-stopped
     ports:
       - "5000:5000"
     volumes:
-      - /path/to/server/downloads:/app/downloads
-      - /path/to/server/data:/app/data
+      - tube-vault-downloads:/app/downloads
+      - tube-vault-data:/app/data
     environment:
       - PORT=5000
       - HOST=0.0.0.0
+
+volumes:
+  tube-vault-downloads:
+    name: tube-vault-downloads
+  tube-vault-data:
+    name: tube-vault-data
 ```
 
 4. Click **Deploy the stack**.
