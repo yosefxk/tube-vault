@@ -2,6 +2,8 @@ import os
 import json
 import asyncio
 import uuid
+import re
+import urllib.parse
 from typing import Optional
 from pathlib import Path
 
@@ -29,6 +31,29 @@ app.add_middleware(
 # Mount static files directory
 STATIC_DIR = BASE_DIR / "static"
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+def resolve_file_on_disk(filename: str) -> Optional[Path]:
+    """Robustly locates a file on disk by name, decoded URL, or video ID pattern."""
+    # 1. Direct match
+    p = DOWNLOAD_DIR / filename
+    if p.exists() and p.is_file():
+        return p
+
+    # 2. URL unquoted match
+    unquoted = urllib.parse.unquote(filename)
+    p2 = DOWNLOAD_DIR / unquoted
+    if p2.exists() and p2.is_file():
+        return p2
+
+    # 3. Match by [video_id]
+    match = re.search(r'\[([a-zA-Z0-9_-]{11})\]', filename) or re.search(r'\[([a-zA-Z0-9_-]{11})\]', unquoted)
+    if match:
+        vid = match.group(1)
+        for f in DOWNLOAD_DIR.iterdir():
+            if f.is_file() and f"[{vid}]" in f.name:
+                return f
+
+    return None
 
 class InfoRequest(BaseModel):
     url: str
@@ -91,8 +116,8 @@ async def delete_history(record_id: str):
 
     filename = record.get("filename")
     if filename:
-        file_path = DOWNLOAD_DIR / filename
-        if file_path.exists():
+        file_path = resolve_file_on_disk(filename)
+        if file_path and file_path.exists():
             try:
                 os.remove(file_path)
             except Exception:
@@ -101,27 +126,32 @@ async def delete_history(record_id: str):
     success = db.delete_entry(record_id)
     return {"success": success}
 
-@app.get("/api/files/{filename}/download")
+@app.get("/api/files/{filename:path}/download")
 async def download_file(filename: str):
-    file_path = DOWNLOAD_DIR / filename
-    if not file_path.exists():
+    file_path = resolve_file_on_disk(filename)
+    if not file_path or not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found on server")
     
-    # Determines proper headers for instant mobile browser saving
+    real_filename = file_path.name
+    # RFC 5987 / UTF-8 safe filename handling for mobile browsers
+    encoded_filename = urllib.parse.quote(real_filename)
+    
     return FileResponse(
         path=file_path,
-        filename=filename,
+        filename=real_filename,
         media_type="application/octet-stream",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+        }
     )
 
-@app.get("/api/files/{filename}/stream")
+@app.get("/api/files/{filename:path}/stream")
 async def stream_file(filename: str, request: Request):
-    file_path = DOWNLOAD_DIR / filename
-    if not file_path.exists():
+    file_path = resolve_file_on_disk(filename)
+    if not file_path or not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found on server")
 
     return FileResponse(
         path=file_path,
-        media_type="video/mp4" if filename.endswith(('.mp4', '.mkv', '.webm')) else "audio/mpeg"
+        media_type="video/mp4" if file_path.suffix.lower() in ['.mp4', '.mkv', '.webm'] else "audio/mpeg"
     )

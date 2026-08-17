@@ -2,6 +2,7 @@ import os
 import asyncio
 import uuid
 import time
+from pathlib import Path
 from typing import Dict, Any, Optional, Callable
 import yt_dlp
 from app.config import DOWNLOAD_DIR
@@ -28,6 +29,18 @@ def format_seconds(seconds: Optional[int]) -> str:
         return f"{h:02d}:{m:02d}:{s:02d}"
     return f"{m:02d}:{s:02d}"
 
+def find_actual_downloaded_file(video_id: str, default_name: str) -> str:
+    """Finds the real filename on disk matching video_id or default_name."""
+    if (DOWNLOAD_DIR / default_name).exists():
+        return default_name
+
+    if video_id:
+        for f in DOWNLOAD_DIR.iterdir():
+            if f.is_file() and f"[{video_id}]" in f.name:
+                return f.name
+
+    return default_name
+
 def extract_video_info(url: str) -> Dict[str, Any]:
     """Fetches video metadata & formats without downloading."""
     ydl_opts = {
@@ -35,7 +48,7 @@ def extract_video_info(url: str) -> Dict[str, Any]:
         'no_warnings': True,
         'skip_download': True,
         'no_playlist': True,
-        'extractor_args': {'youtube': {'player_client': ['mweb', 'android', 'web', 'tv']}}
+        'extractor_args': {'youtube': {'player_client': ['ios', 'android', 'web', 'tv']}}
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
@@ -133,18 +146,18 @@ async def run_download_task(task_id: str, url: str, preset: str = "quick_1080p",
             })
 
     def _execute():
-        # Setup yt-dlp options based on preset / custom format
         out_template = str(DOWNLOAD_DIR / '%(title)s [%(id)s].%(ext)s')
         
         ydl_opts: Dict[str, Any] = {
             'outtmpl': out_template,
             'progress_hooks': [progress_hook],
-            'concurrent_fragment_downloads': 8, # Multi-threaded speed boost!
             'quiet': True,
             'no_warnings': True,
             'no_playlist': True,
             'overwrites': True,
-            'extractor_args': {'youtube': {'player_client': ['mweb', 'android', 'web', 'tv']}}
+            'retries': 10,
+            'fragment_retries': 10,
+            'extractor_args': {'youtube': {'player_client': ['ios', 'android', 'web', 'tv']}}
         }
 
         is_audio = False
@@ -193,22 +206,26 @@ async def run_download_task(task_id: str, url: str, preset: str = "quick_1080p",
             if 'entries' in info:
                 info = info['entries'][0]
 
-            filename = ydl.prepare_filename(info)
-            # Adjust filename extension if converted to mp3/m4a
-            if preset == 'quick_mp3':
-                filename = os.path.splitext(filename)[0] + '.mp3'
-            elif preset == 'm4a_audio':
-                filename = os.path.splitext(filename)[0] + '.m4a'
-            elif ydl_opts.get('merge_output_format') == 'mp4':
-                filename = os.path.splitext(filename)[0] + '.mp4'
+            video_id = info.get('id', '')
+            raw_filename = ydl.prepare_filename(info)
 
-            basename = os.path.basename(filename)
-            filesize = os.path.getsize(filename) if os.path.exists(filename) else 0
+            # Adjust extension based on conversion
+            if preset == 'quick_mp3':
+                raw_filename = os.path.splitext(raw_filename)[0] + '.mp3'
+            elif preset == 'm4a_audio':
+                raw_filename = os.path.splitext(raw_filename)[0] + '.m4a'
+            elif ydl_opts.get('merge_output_format') == 'mp4':
+                raw_filename = os.path.splitext(raw_filename)[0] + '.mp4'
+
+            # Accurately resolve filename on disk (handles unicode/pipe sanitization)
+            basename = find_actual_downloaded_file(video_id, os.path.basename(raw_filename))
+            actual_filepath = DOWNLOAD_DIR / basename
+            filesize = os.path.getsize(actual_filepath) if actual_filepath.exists() else 0
 
             # Save to persistent history database
             history_record = db.add_entry({
                 'url': url,
-                'video_id': info.get('id', ''),
+                'video_id': video_id,
                 'title': info.get('title', 'Unknown Title'),
                 'uploader': info.get('uploader', 'Unknown Uploader'),
                 'thumbnail': info.get('thumbnail', ''),
