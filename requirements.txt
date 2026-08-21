@@ -3,3 +3,6 @@ uvicorn[standard]>=0.28.0
 yt-dlp>=2024.3.10
 pydantic>=2.6.0
 python-multipart>=0.0.9
+telethon>=1.36.0
+pycryptodome>=3.20.0
+

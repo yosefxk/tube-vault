@@ -48,8 +48,14 @@ def find_actual_downloaded_file(video_id: str, default_name: str) -> str:
 
     return default_name
 
-def extract_video_info(url: str) -> Dict[str, Any]:
-    """Fetches video metadata & formats without downloading."""
+from app.telegram_downloader import (
+    is_telegram_url,
+    extract_telegram_info,
+    run_telegram_download_task
+)
+
+def _extract_yt_info(url: str) -> Dict[str, Any]:
+    """Fetches YouTube / standard video metadata & formats without downloading."""
     ydl_opts = {
         'quiet': True,
         'no_warnings': True,
@@ -61,13 +67,11 @@ def extract_video_info(url: str) -> Dict[str, Any]:
         info = ydl.extract_info(url, download=False)
         
     if 'entries' in info:
-        # If a playlist link was given, take the first entry
         info = info['entries'][0]
 
     formats = []
     video_resolutions = set()
     
-    # Process formats
     raw_formats = info.get('formats', [])
     for f in raw_formats:
         vcodec = f.get('vcodec', 'none')
@@ -77,7 +81,6 @@ def extract_video_info(url: str) -> Dict[str, Any]:
         format_id = f.get('format_id', '')
         filesize = f.get('filesize') or f.get('filesize_approx')
 
-        # Video formats with video stream
         if vcodec != 'none' and height:
             res_key = f"{height}p"
             if res_key not in video_resolutions:
@@ -92,10 +95,8 @@ def extract_video_info(url: str) -> Dict[str, Any]:
                     'filesize_str': format_bytes(filesize) if filesize else "Variable"
                 })
 
-    # Sort formats by height descending
     formats.sort(key=lambda x: x.get('height', 0), reverse=True)
 
-    # Standard presets
     presets = [
         {'id': 'quick_mp3', 'label': '⚡ Quick MP3 (320kbps)', 'is_audio': True, 'type': 'audio', 'ext': 'mp3'},
         {'id': 'quick_1080p', 'label': '⚡ Quick 1080p Video', 'is_audio': False, 'type': 'video', 'ext': 'mp4'},
@@ -115,8 +116,18 @@ def extract_video_info(url: str) -> Dict[str, Any]:
         'presets': presets
     }
 
+async def extract_video_info(url: str) -> Dict[str, Any]:
+    """Fetches video metadata & formats for YouTube, Telegram, or any supported URL."""
+    if is_telegram_url(url):
+        return await extract_telegram_info(url)
+    return await asyncio.to_thread(_extract_yt_info, url)
+
 async def run_download_task(task_id: str, url: str, preset: str = "quick_1080p", custom_format_id: Optional[str] = None):
-    """Executes the download task in threadpool and streams progress."""
+    """Executes the download task and streams progress."""
+    if is_telegram_url(url):
+        await run_telegram_download_task(task_id, tasks_progress, url, preset, custom_format_id)
+        return
+
     tasks_progress[task_id] = {
         'status': 'starting',
         'percent': 0.0,

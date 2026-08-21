@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const preset = btn.getAttribute('data-preset');
             const url = urlInput.value.trim();
             if (!url) {
-                alert('Please paste a YouTube URL first!');
+                alert('Please paste a YouTube or Telegram URL first!');
                 urlInput.focus();
                 return;
             }
@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
     inspectBtn.addEventListener('click', async () => {
         const url = urlInput.value.trim();
         if (!url) {
-            alert('Please paste a YouTube URL first!');
+            alert('Please paste a YouTube or Telegram URL first!');
             urlInput.focus();
             return;
         }
