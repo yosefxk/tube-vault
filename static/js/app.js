@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Clipboard Auto-Paste
     pasteBtn.addEventListener('click', async () => {
-        // 1. Try reading via Web Clipboard API
+        // Direct automatic clipboard reading
         if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
             try {
                 const text = await navigator.clipboard.readText();
@@ -94,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     urlInput.value = text.trim();
                     toggleClearBtn();
                     urlInput.focus();
-                    showToast('📋 Link pasted from clipboard!', 'success', 2000);
+                    showToast('📋 Link pasted automatically!', 'success', 2000);
                     return;
                 }
             } catch (err) {
@@ -102,19 +102,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // 2. Fallback for insecure HTTP context / mobile browser restrictions
+        // If running on HTTP without secure origin flag, browser blocks background clipboard reads
         urlInput.focus();
-        urlInput.select();
-
-        // Interactive prompt allows 1-tap paste even when browser blocks direct clipboard reading over HTTP
-        const pasted = prompt('Paste your YouTube URL here:', urlInput.value || '');
-        if (pasted && pasted.trim().length > 0) {
-            urlInput.value = pasted.trim();
-            toggleClearBtn();
-            showToast('📋 Link pasted!', 'success', 2000);
-        } else {
-            showToast('💡 Tap & hold the input box to Paste', 'info', 4000);
-        }
+        showToast('🔒 Browser blocks automatic paste on HTTP. Use HTTPS or enable Chrome Secure Origin flag.', 'warning', 5000);
     });
 
     // Preset Buttons (1-Tap Download)
