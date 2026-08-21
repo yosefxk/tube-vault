@@ -86,6 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Clipboard Auto-Paste
     pasteBtn.addEventListener('click', async () => {
+        // 1. Try reading via Web Clipboard API
         if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
             try {
                 const text = await navigator.clipboard.readText();
@@ -101,10 +102,19 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Fallback for HTTP / Android Mobile Chrome security restrictions:
+        // 2. Fallback for insecure HTTP context / mobile browser restrictions
         urlInput.focus();
         urlInput.select();
-        showToast('💡 Tap & hold the input box to Paste (Browser restricts auto-paste over HTTP)', 'info', 4500);
+
+        // Interactive prompt allows 1-tap paste even when browser blocks direct clipboard reading over HTTP
+        const pasted = prompt('Paste your YouTube URL here:', urlInput.value || '');
+        if (pasted && pasted.trim().length > 0) {
+            urlInput.value = pasted.trim();
+            toggleClearBtn();
+            showToast('📋 Link pasted!', 'success', 2000);
+        } else {
+            showToast('💡 Tap & hold the input box to Paste', 'info', 4000);
+        }
     });
 
     // Preset Buttons (1-Tap Download)
@@ -260,7 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 progressBarFill.style.width = `${data.percent}%`;
                 progressSpeed.innerText = data.speed_str || '0 MB/s';
                 progressDownloaded.innerText = `${data.downloaded_str} / ${data.total_str}`;
-                progressEta.innerText = `ETA: ${data.eta_str}`;
+                progressEta.innerText = data.eta_str ? (data.eta_str.startsWith('ETA') ? data.eta_str : `ETA: ${data.eta_str}`) : 'ETA: Calculating...';
             } else if (data.status === 'converting') {
                 updateStepper(3); // Step 3: Converting / Merging
                 progressStatus.innerText = 'Step 3: Merging & converting audio/video...';

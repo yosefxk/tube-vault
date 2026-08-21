@@ -20,14 +20,21 @@ def format_bytes(bytes_num: Optional[int]) -> str:
         bytes_num /= 1024.0
     return f"{bytes_num:.1f} TB"
 
-def format_seconds(seconds: Optional[int]) -> str:
-    if not seconds:
+def format_seconds(seconds: Optional[Any]) -> str:
+    if seconds is None:
         return "00:00"
-    m, s = divmod(int(seconds), 60)
-    h, m = divmod(m, 60)
-    if h > 0:
-        return f"{h:02d}:{m:02d}:{s:02d}"
-    return f"{m:02d}:{s:02d}"
+    try:
+        sec_float = float(seconds)
+        if sec_float <= 0:
+            return "00:00"
+        sec_int = int(round(sec_float))
+        m, s = divmod(sec_int, 60)
+        h, m = divmod(m, 60)
+        if h > 0:
+            return f"{h:02d}:{m:02d}:{s:02d}"
+        return f"{m:02d}:{s:02d}"
+    except (ValueError, TypeError):
+        return "00:00"
 
 def find_actual_downloaded_file(video_id: str, default_name: str) -> str:
     """Finds the real filename on disk matching video_id or default_name."""
@@ -126,9 +133,11 @@ async def run_download_task(task_id: str, url: str, preset: str = "quick_1080p",
             total_bytes = d.get('total_bytes') or d.get('total_bytes_estimate') or 0
             downloaded = d.get('downloaded_bytes') or 0
             speed = d.get('speed') or 0
-            eta = d.get('eta') or 0
+            eta = d.get('eta')
 
             percent = (downloaded / total_bytes * 100) if total_bytes > 0 else 0.0
+
+            eta_str = format_seconds(eta) if eta is not None and float(eta) > 0 else "Calculating..."
 
             tasks_progress[task_id].update({
                 'status': 'downloading',
@@ -136,7 +145,7 @@ async def run_download_task(task_id: str, url: str, preset: str = "quick_1080p",
                 'downloaded_str': format_bytes(downloaded),
                 'total_str': format_bytes(total_bytes),
                 'speed_str': f"{format_bytes(speed)}/s" if speed else "0 B/s",
-                'eta_str': f"{eta}s" if eta else "Calculating..."
+                'eta_str': eta_str
             })
         elif d['status'] == 'finished':
             tasks_progress[task_id].update({
