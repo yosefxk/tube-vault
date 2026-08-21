@@ -48,7 +48,7 @@ def extract_video_info(url: str) -> Dict[str, Any]:
         'no_warnings': True,
         'skip_download': True,
         'no_playlist': True,
-        'extractor_args': {'youtube': {'player_client': ['ios', 'android', 'web', 'tv']}}
+        'js_runtimes': {'node': {}}
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
@@ -157,7 +157,7 @@ async def run_download_task(task_id: str, url: str, preset: str = "quick_1080p",
             'overwrites': True,
             'retries': 10,
             'fragment_retries': 10,
-            'extractor_args': {'youtube': {'player_client': ['ios', 'android', 'web', 'tv']}}
+            'js_runtimes': {'node': {}}
         }
 
         is_audio = False

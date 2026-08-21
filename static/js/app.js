@@ -55,25 +55,56 @@ document.addEventListener('DOMContentLoaded', () => {
         previewCard.style.display = 'none';
     });
 
+    // Toast notification helper
+    function showToast(message, type = 'info', duration = 4000) {
+        let container = document.getElementById('toastContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toastContainer';
+            container.className = 'toast-container';
+            document.body.appendChild(container);
+        }
+
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.innerHTML = message;
+        container.appendChild(toast);
+
+        requestAnimationFrame(() => {
+            toast.classList.add('show');
+        });
+
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 300);
+        }, duration);
+    }
+
     // Clipboard Auto-Paste
     pasteBtn.addEventListener('click', async () => {
-        urlInput.focus();
-        
         if (navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
             try {
                 const text = await navigator.clipboard.readText();
                 if (text && text.trim().length > 0) {
                     urlInput.value = text.trim();
                     toggleClearBtn();
+                    urlInput.focus();
+                    showToast('📋 Link pasted from clipboard!', 'success', 2000);
                     return;
                 }
             } catch (err) {
-                console.log('Clipboard read blocked over HTTP:', err);
+                console.log('Clipboard read blocked:', err);
             }
         }
 
-        // If Clipboard API is blocked by browser over HTTP
+        // Fallback for HTTP / Android Mobile Chrome security restrictions:
+        urlInput.focus();
         urlInput.select();
+        showToast('💡 Tap & hold the input box to Paste (Browser restricts auto-paste over HTTP)', 'info', 4500);
     });
 
     // Preset Buttons (1-Tap Download)
