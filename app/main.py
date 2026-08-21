@@ -82,10 +82,10 @@ async def get_info(req: InfoRequest):
     if not req.url:
         raise HTTPException(status_code=400, detail="URL is required")
     try:
-        info = await extract_video_info(req.url)
+        info = await asyncio.to_thread(extract_video_info, req.url)
         return info
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to fetch media info: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Failed to fetch video info: {str(e)}")
 
 @app.post("/api/download")
 async def start_download(req: DownloadRequest, background_tasks: BackgroundTasks):

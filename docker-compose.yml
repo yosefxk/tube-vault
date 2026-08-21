@@ -12,11 +12,6 @@ services:
       - tube-vault-data:/app/data
     environment:
       - PORT=5000
-      # Telegram MTProto Integration (optional: get free keys from https://my.telegram.org)
-      # - TELEGRAM_API_ID=
-      # - TELEGRAM_API_HASH=
-      # - TELEGRAM_BOT_TOKEN=
-      # - TELEGRAM_SESSION_STRING=
 
 volumes:
   tube-vault-downloads:

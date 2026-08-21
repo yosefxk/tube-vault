@@ -16,11 +16,3 @@ DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 HISTORY_FILE = DATA_DIR / "history.json"
-
-# Telegram MTProto Config
-TELEGRAM_API_ID = os.getenv("TELEGRAM_API_ID")
-TELEGRAM_API_HASH = os.getenv("TELEGRAM_API_HASH")
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-TELEGRAM_SESSION_STRING = os.getenv("TELEGRAM_SESSION_STRING")
-TELEGRAM_SESSION_FILE = DATA_DIR / "telegram.session"
-
