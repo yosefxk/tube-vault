@@ -218,60 +218,62 @@ async def run_download_task(task_id: str, url: str, preset: str = "quick_1080p",
             ydl_opts['format'] = 'bestvideo+bestaudio/best'
             ydl_opts['merge_output_format'] = 'mp4'
 
+        active_ydl_opts = ydl_opts
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
+                raw_filename = ydl.prepare_filename(info)
         except Exception:
             # Fallback for restricted / kids / embed-blocked videos
-            fallback_opts = {
+            active_ydl_opts = {
                 **ydl_opts,
                 'extractor_args': {'youtube': {'player_client': ['android', 'ios']}}
             }
-            with yt_dlp.YoutubeDL(fallback_opts) as ydl:
+            with yt_dlp.YoutubeDL(active_ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
+                raw_filename = ydl.prepare_filename(info)
 
         if 'entries' in info:
             info = info['entries'][0]
 
-            video_id = info.get('id', '')
-            raw_filename = ydl.prepare_filename(info)
+        video_id = info.get('id', '')
 
-            # Adjust extension based on conversion
-            if preset == 'quick_mp3':
-                raw_filename = os.path.splitext(raw_filename)[0] + '.mp3'
-            elif preset == 'm4a_audio':
-                raw_filename = os.path.splitext(raw_filename)[0] + '.m4a'
-            elif ydl_opts.get('merge_output_format') == 'mp4':
-                raw_filename = os.path.splitext(raw_filename)[0] + '.mp4'
+        # Adjust extension based on conversion
+        if preset == 'quick_mp3':
+            raw_filename = os.path.splitext(raw_filename)[0] + '.mp3'
+        elif preset == 'm4a_audio':
+            raw_filename = os.path.splitext(raw_filename)[0] + '.m4a'
+        elif active_ydl_opts.get('merge_output_format') == 'mp4':
+            raw_filename = os.path.splitext(raw_filename)[0] + '.mp4'
 
-            # Accurately resolve filename on disk (handles unicode/pipe sanitization)
-            basename = find_actual_downloaded_file(video_id, os.path.basename(raw_filename))
-            actual_filepath = DOWNLOAD_DIR / basename
-            filesize = os.path.getsize(actual_filepath) if actual_filepath.exists() else 0
+        # Accurately resolve filename on disk (handles unicode/pipe sanitization)
+        basename = find_actual_downloaded_file(video_id, os.path.basename(raw_filename))
+        actual_filepath = DOWNLOAD_DIR / basename
+        filesize = os.path.getsize(actual_filepath) if actual_filepath.exists() else 0
 
-            # Save to persistent history database
-            history_record = db.add_entry({
-                'url': url,
-                'video_id': video_id,
-                'title': info.get('title', 'Unknown Title'),
-                'uploader': info.get('uploader', 'Unknown Uploader'),
-                'thumbnail': info.get('thumbnail', ''),
-                'duration': info.get('duration', 0),
-                'duration_str': format_seconds(info.get('duration', 0)),
-                'format_id': custom_format_id or preset,
-                'format_note': format_note,
-                'is_audio': is_audio,
-                'filename': basename,
-                'filesize': filesize
-            })
+        # Save to persistent history database
+        history_record = db.add_entry({
+            'url': url,
+            'video_id': video_id,
+            'title': info.get('title', 'Unknown Title'),
+            'uploader': info.get('uploader', 'Unknown Uploader'),
+            'thumbnail': info.get('thumbnail', ''),
+            'duration': info.get('duration', 0),
+            'duration_str': format_seconds(info.get('duration', 0)),
+            'format_id': custom_format_id or preset,
+            'format_note': format_note,
+            'is_audio': is_audio,
+            'filename': basename,
+            'filesize': filesize
+        })
 
-            tasks_progress[task_id].update({
-                'status': 'completed',
-                'percent': 100.0,
-                'filename': basename,
-                'record_id': history_record['id'],
-                'eta_str': 'Complete!'
-            })
+        tasks_progress[task_id].update({
+            'status': 'completed',
+            'percent': 100.0,
+            'filename': basename,
+            'record_id': history_record['id'],
+            'eta_str': 'Complete!'
+        })
 
     try:
         await asyncio.to_thread(_execute)
