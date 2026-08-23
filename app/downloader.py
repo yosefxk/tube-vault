@@ -49,16 +49,24 @@ def find_actual_downloaded_file(video_id: str, default_name: str) -> str:
     return default_name
 
 def extract_video_info(url: str) -> Dict[str, Any]:
-    """Fetches video metadata & formats without downloading."""
-    ydl_opts = {
+    """Fetches video metadata & formats without downloading, with auto-fallback."""
+    primary_opts = {
         'quiet': True,
         'no_warnings': True,
         'skip_download': True,
         'no_playlist': True,
         'js_runtimes': {'node': {}}
     }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=False)
+    try:
+        with yt_dlp.YoutubeDL(primary_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+    except Exception:
+        fallback_opts = {
+            **primary_opts,
+            'extractor_args': {'youtube': {'player_client': ['android', 'ios']}}
+        }
+        with yt_dlp.YoutubeDL(fallback_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
         
     if 'entries' in info:
         # If a playlist link was given, take the first entry
@@ -210,10 +218,20 @@ async def run_download_task(task_id: str, url: str, preset: str = "quick_1080p",
             ydl_opts['format'] = 'bestvideo+bestaudio/best'
             ydl_opts['merge_output_format'] = 'mp4'
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            if 'entries' in info:
-                info = info['entries'][0]
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+        except Exception:
+            # Fallback for restricted / kids / embed-blocked videos
+            fallback_opts = {
+                **ydl_opts,
+                'extractor_args': {'youtube': {'player_client': ['android', 'ios']}}
+            }
+            with yt_dlp.YoutubeDL(fallback_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+
+        if 'entries' in info:
+            info = info['entries'][0]
 
             video_id = info.get('id', '')
             raw_filename = ydl.prepare_filename(info)
