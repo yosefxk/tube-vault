@@ -15,7 +15,7 @@ from pydantic import BaseModel
 
 from app.config import PORT, HOST, DOWNLOAD_DIR, BASE_DIR
 from app.db import db
-from app.downloader import extract_video_info, run_download_task, tasks_progress
+from app.downloader import extract_video_info, run_download_task, tasks_progress, validate_media_url, validate_format_id
 
 app = FastAPI(title="TubeVault", description="Self-Hosted Media Downloader")
 
@@ -33,25 +33,34 @@ STATIC_DIR = BASE_DIR / "static"
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 def resolve_file_on_disk(filename: str) -> Optional[Path]:
-    """Robustly locates a file on disk by name, decoded URL, or video ID pattern."""
+    """Robustly locates a file on disk by name, decoded URL, or video ID pattern, ensuring no path traversal."""
+    resolved_download_dir = DOWNLOAD_DIR.resolve()
+
+    def is_safe_file(path_candidate: Path) -> bool:
+        try:
+            resolved = path_candidate.resolve()
+            return resolved.is_relative_to(resolved_download_dir) and resolved.is_file()
+        except (ValueError, RuntimeError):
+            return False
+
     # 1. Direct match
     p = DOWNLOAD_DIR / filename
-    if p.exists() and p.is_file():
-        return p
+    if is_safe_file(p):
+        return p.resolve()
 
     # 2. URL unquoted match
     unquoted = urllib.parse.unquote(filename)
     p2 = DOWNLOAD_DIR / unquoted
-    if p2.exists() and p2.is_file():
-        return p2
+    if is_safe_file(p2):
+        return p2.resolve()
 
     # 3. Match by [video_id]
     match = re.search(r'\[([a-zA-Z0-9_-]{11})\]', filename) or re.search(r'\[([a-zA-Z0-9_-]{11})\]', unquoted)
-    if match:
+    if match and DOWNLOAD_DIR.exists():
         vid = match.group(1)
         for f in DOWNLOAD_DIR.iterdir():
-            if f.is_file() and f"[{vid}]" in f.name:
-                return f
+            if f.is_file() and f"[{vid}]" in f.name and is_safe_file(f):
+                return f.resolve()
 
     return None
 
@@ -82,8 +91,11 @@ async def get_info(req: InfoRequest):
     if not req.url:
         raise HTTPException(status_code=400, detail="URL is required")
     try:
+        validate_media_url(req.url)
         info = await asyncio.to_thread(extract_video_info, req.url)
         return info
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to fetch video info: {str(e)}")
 
@@ -91,21 +103,36 @@ async def get_info(req: InfoRequest):
 async def start_download(req: DownloadRequest, background_tasks: BackgroundTasks):
     if not req.url:
         raise HTTPException(status_code=400, detail="URL is required")
+    try:
+        validate_media_url(req.url)
+        if req.format_id:
+            validate_format_id(req.format_id)
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
     
     task_id = str(uuid.uuid4())
     background_tasks.add_task(run_download_task, task_id, req.url, req.preset, req.format_id)
     return {"task_id": task_id}
 
 @app.get("/api/progress/{task_id}")
-async def sse_progress(task_id: str):
+async def sse_progress(task_id: str, request: Request):
     async def event_generator():
+        waiting_count = 0
         while True:
+            if await request.is_disconnected():
+                break
+
             progress = tasks_progress.get(task_id)
             if not progress:
+                waiting_count += 1
                 yield f"data: {json.dumps({'status': 'waiting', 'percent': 0.0})}\n\n"
+                if waiting_count >= 20:
+                    yield f"data: {json.dumps({'status': 'failed', 'error': 'Task not found or timed out'})}\n\n"
+                    break
             else:
                 yield f"data: {json.dumps(progress)}\n\n"
                 if progress.get('status') in ['completed', 'failed']:
+                    tasks_progress.pop(task_id, None)
                     break
             await asyncio.sleep(0.5)
 

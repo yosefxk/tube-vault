@@ -2,14 +2,60 @@ import os
 import asyncio
 import uuid
 import time
+import re
+import socket
+import ipaddress
+import urllib.parse
+from collections import OrderedDict
 from pathlib import Path
 from typing import Dict, Any, Optional, Callable
 import yt_dlp
 from app.config import DOWNLOAD_DIR
 from app.db import db
 
+class BoundedTasksProgress(OrderedDict):
+    def __init__(self, maxsize: int = 500):
+        super().__init__()
+        self.maxsize = maxsize
+
+    def __setitem__(self, key, value):
+        if len(self) >= self.maxsize and key not in self:
+            self.popitem(last=False)
+        super().__setitem__(key, value)
+
 # Active task progress store: task_id -> progress dict
-tasks_progress: Dict[str, Dict[str, Any]] = {}
+tasks_progress = BoundedTasksProgress(maxsize=500)
+
+def validate_media_url(url: str) -> None:
+    """Validates URL scheme and ensures it does not resolve to private/internal IP addresses (SSRF defense)."""
+    if not url or not isinstance(url, str):
+        raise ValueError("URL must be a non-empty string")
+    
+    parsed = urllib.parse.urlparse(url.strip())
+    if parsed.scheme.lower() not in ('http', 'https'):
+        raise ValueError(f"Invalid URL scheme '{parsed.scheme}': only http and https are allowed")
+    
+    hostname = parsed.hostname
+    if not hostname:
+        raise ValueError("Invalid URL: missing hostname")
+    
+    try:
+        addr_info = socket.getaddrinfo(hostname, None)
+        for _, _, _, _, sockaddr in addr_info:
+            ip_str = sockaddr[0]
+            ip = ipaddress.ip_address(ip_str)
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
+                raise ValueError(f"URL resolves to disallowed private/internal IP address: {ip_str}")
+    except (socket.gaierror, ValueError) as e:
+        raise ValueError(f"URL validation failed: {str(e)}")
+
+def validate_format_id(format_id: Optional[str]) -> None:
+    """Validates format ID to prevent format string injection."""
+    if not format_id:
+        return
+    if not re.fullmatch(r"^[A-Za-z0-9._-]+$", format_id):
+        raise ValueError(f"Invalid format_id: '{format_id}'. Allowed characters: alphanumeric, ., _, -")
+
 
 def format_bytes(bytes_num: Optional[int]) -> str:
     if not bytes_num:
@@ -50,6 +96,7 @@ def find_actual_downloaded_file(video_id: str, default_name: str) -> str:
 
 def extract_video_info(url: str) -> Dict[str, Any]:
     """Fetches video metadata & formats without downloading, with auto-fallback."""
+    validate_media_url(url)
     primary_opts = {
         'quiet': True,
         'no_warnings': True,
@@ -68,9 +115,12 @@ def extract_video_info(url: str) -> Dict[str, Any]:
         with yt_dlp.YoutubeDL(fallback_opts) as ydl:
             info = ydl.extract_info(url, download=False)
         
-    if 'entries' in info:
-        # If a playlist link was given, take the first entry
-        info = info['entries'][0]
+    if info and 'entries' in info:
+        entries = info.get('entries')
+        if entries:
+            info = next(iter(entries), None) or info
+        else:
+            raise ValueError("Playlist contains no accessible entries")
 
     formats = []
     video_resolutions = set()
@@ -125,6 +175,10 @@ def extract_video_info(url: str) -> Dict[str, Any]:
 
 async def run_download_task(task_id: str, url: str, preset: str = "quick_1080p", custom_format_id: Optional[str] = None):
     """Executes the download task in threadpool and streams progress."""
+    validate_media_url(url)
+    if custom_format_id:
+        validate_format_id(custom_format_id)
+
     tasks_progress[task_id] = {
         'status': 'starting',
         'percent': 0.0,
@@ -233,8 +287,12 @@ async def run_download_task(task_id: str, url: str, preset: str = "quick_1080p",
                 info = ydl.extract_info(url, download=True)
                 raw_filename = ydl.prepare_filename(info)
 
-        if 'entries' in info:
-            info = info['entries'][0]
+        if info and 'entries' in info:
+            entries = info.get('entries')
+            if entries:
+                info = next(iter(entries), None) or info
+            else:
+                raise ValueError("Playlist contains no accessible entries")
 
         video_id = info.get('id', '')
 

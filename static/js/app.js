@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
-        toast.innerHTML = message;
+        toast.textContent = message;
         container.appendChild(toast);
 
         requestAnimationFrame(() => {
@@ -340,8 +340,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const dateStr = item.timestamp ? new Date(item.timestamp).toLocaleDateString() : '';
             const sizeStr = item.filesize ? formatBytes(item.filesize) : '';
 
+            const safeThumbnail = (item.thumbnail && (item.thumbnail.startsWith('http://') || item.thumbnail.startsWith('https://') || item.thumbnail.startsWith('/')))
+                ? escapeHtml(item.thumbnail)
+                : '';
+
             el.innerHTML = `
-                <img class="history-thumb" src="${item.thumbnail || ''}" alt="Thumbnail" onerror="this.src=''">
+                <img class="history-thumb" src="${safeThumbnail}" alt="Thumbnail" onerror="this.src=''">
                 <div class="history-details">
                     <div class="history-title" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</div>
                     <div class="history-sub">
@@ -354,10 +358,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button type="button" class="btn-action download-btn" title="Save to Device" data-file="${escapeHtml(item.filename)}">
                         📥
                     </button>
-                    <button type="button" class="btn-action play-btn" title="Play Preview" data-file="${escapeHtml(item.filename)}" data-title="${escapeHtml(item.title)}" data-audio="${item.is_audio}">
+                    <button type="button" class="btn-action play-btn" title="Play Preview" data-file="${escapeHtml(item.filename)}" data-title="${escapeHtml(item.title)}" data-audio="${escapeHtml(String(item.is_audio))}">
                         ▶️
                     </button>
-                    <button type="button" class="btn-action delete-btn" title="Delete" data-id="${item.id}">
+                    <button type="button" class="btn-action delete-btn" title="Delete" data-id="${escapeHtml(String(item.id))}">
                         🗑️
                     </button>
                 </div>
@@ -436,7 +440,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function escapeHtml(str) {
         if (!str) return '';
-        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     // Initial load
